@@ -35,6 +35,9 @@ jobs:
       - name: Build TypeScript app
         run: npm run build
 
+      - name: Start Postgres with Docker Compose
+        run: docker compose up -d postgres
+
       - name: Run TypeORM migrations
         run: npm run migration:run
 
