@@ -14,9 +14,6 @@ COPY . .
 # Build the app
 RUN npm run build
 
-# Run migrations
-RUN npm run typeorm migration:run -- -d typeorm.config.ts
-
 # -------------------
 # Production stage
 # -------------------
@@ -30,4 +27,6 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package*.json ./
 
 EXPOSE 3000
-CMD ["node", "dist/src/main.js"]
+
+# Run migrations at container startup then start app
+CMD sh -c "npm run typeorm migration:run -- -d dist/typeorm.config.js && node dist/src/main.js"
