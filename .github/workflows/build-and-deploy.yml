@@ -16,26 +16,26 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up .env from environment variables
+      - name: Export environment variables
         run: |
-          echo "APP_MESSAGE_PREFIX=${{ vars.APP_MESSAGE_PREFIX }}" >> .env
-          echo "DB_HOST=${{ vars.DB_HOST }}" >> .env
-          echo "DB_PORT=${{ vars.DB_PORT }}" >> .env
-          echo "DB_USER=${{ vars.DB_USER }}" >> .env
-          echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> .env
-          echo "DB_DATABASE=${{ vars.DB_DATABASE }}" >> .env
-          echo "DB_SYNC=${{ vars.DB_SYNC }}" >> .env
-          echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> .env
-          echo "JWT_EXPIRES_IN=${{ vars.JWT_EXPIRES_IN }}" >> .env
+          echo "APP_MESSAGE_PREFIX=${{ vars.APP_MESSAGE_PREFIX }}" >> $GITHUB_ENV
+          echo "DB_HOST=${{ vars.DB_HOST }}" >> $GITHUB_ENV
+          echo "DB_PORT=${{ vars.DB_PORT }}" >> $GITHUB_ENV
+          echo "DB_USER=${{ vars.DB_USER }}" >> $GITHUB_ENV
+          echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> $GITHUB_ENV
+          echo "DB_DATABASE=${{ vars.DB_DATABASE }}" >> $GITHUB_ENV
+          echo "DB_SYNC=${{ vars.DB_SYNC }}" >> $GITHUB_ENV
+          echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> $GITHUB_ENV
+          echo "JWT_EXPIRES_IN=${{ vars.JWT_EXPIRES_IN }}" >> $GITHUB_ENV
 
       - name: Stop existing containers
         run: docker compose down || true
 
       - name: Build and start services
-        run: docker compose up -d
+        run: docker compose up -d --build
 
-      - name: Debug env inside container
-        run: docker compose exec -T app env | grep DB_HOST
+      - name: Print envs
+        run: env | grep DB_
 
       - name: Wait for services to be ready
         run: |
