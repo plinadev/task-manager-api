@@ -23,9 +23,16 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    env_file: .env
-    volumes:
-      - ./.env:/app/.env
+    environment:
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_DATABASE: ${DB_DATABASE}
+      DB_SYNC: ${DB_SYNC}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN}
+      APP_MESSAGE_PREFIX: ${APP_MESSAGE_PREFIX}
     ports:
       - '3000:3000'
     restart: unless-stopped
