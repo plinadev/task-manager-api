@@ -4,9 +4,9 @@ on:
   workflow_call:
     inputs:
       env-name:
-        type: string
+        type: string # self-hosted runner label
       github-env:
-        type: string
+        type: string # dev or prod
 
 jobs:
   deploy:
@@ -16,23 +16,32 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Export environment variables
+      - name: Set up .env from environment variables
         run: |
-          export APP_MESSAGE_PREFIX="${{ vars.APP_MESSAGE_PREFIX }}"
-          export DB_HOST="${{ vars.DB_HOST }}"
-          export DB_PORT="${{ vars.DB_PORT }}"
-          export DB_USER="${{ vars.DB_USER }}"
-          export DB_PASSWORD="${{ secrets.DB_PASSWORD }}"
-          export DB_DATABASE="${{ vars.DB_DATABASE }}"
-          export DB_SYNC="${{ vars.DB_SYNC }}"
-          export JWT_SECRET="${{ secrets.JWT_SECRET }}"
-          export JWT_EXPIRES_IN="${{ vars.JWT_EXPIRES_IN }}"
-          # show them for debug (optional)
-          env | grep DB_
-        shell: bash
+          echo "APP_MESSAGE_PREFIX=${{ vars.APP_MESSAGE_PREFIX }}" >> .env
+          echo "DB_HOST=${{ vars.DB_HOST }}" >> .env
+          echo "DB_PORT=${{ vars.DB_PORT }}" >> .env
+          echo "DB_USER=${{ vars.DB_USER }}" >> .env
+          echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> .env
+          echo "DB_DATABASE=${{ vars.DB_DATABASE }}" >> .env
+          echo "DB_SYNC=${{ vars.DB_SYNC }}" >> .env
+          echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> .env
+          echo "JWT_EXPIRES_IN=${{ vars.JWT_EXPIRES_IN }}" >> .env
 
       - name: Stop existing containers
         run: docker compose down || true
 
       - name: Build and start services
-        run: docker compose up -d --build
+        run: docker compose --env-file .env up -d --build
+
+      - name: Check DB envs in container
+        run: docker compose exec app env | grep DB_
+
+      - name: Wait for services to be ready
+        run: |
+          echo "Waiting for services to be healthy..."
+          timeout 120 bash -c 'until docker compose ps | grep -q "healthy"; do echo "Waiting..."; sleep 5; done'
+          echo "Services are ready!"
+
+      - name: Check service status
+        run: docker compose ps
