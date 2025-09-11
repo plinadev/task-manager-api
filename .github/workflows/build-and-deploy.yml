@@ -19,8 +19,8 @@ jobs:
       - name: Set up .env from environment variables
         run: |
           echo "APP_MESSAGE_PREFIX=${{ vars.APP_MESSAGE_PREFIX }}" >> .env
-          echo "DB_HOST=postgres" >> .env
-          echo "DB_PORT=5432" >> .env
+          echo "DB_HOST=${{ vars.DB_HOST }}" >> .env
+          echo "DB_PORT=${{ vars.DB_PORT }}" >> .env
           echo "DB_USER=${{ vars.DB_USER }}" >> .env
           echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> .env
           echo "DB_DATABASE=${{ vars.DB_DATABASE }}" >> .env
@@ -28,23 +28,17 @@ jobs:
           echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> .env
           echo "JWT_EXPIRES_IN=${{ vars.JWT_EXPIRES_IN }}" >> .env
 
-      - name: Build Docker image
-        run: docker build -t task-manager-api .
+      - name: Stop existing containers
+        run: docker-compose down || true
 
-      - name: Start Postgres container
-        run: docker compose -f docker-compose.yml up -d postgres
+      - name: Build and start services
+        run: docker-compose up -d
 
-      - name: Start app container
+      - name: Wait for services to be ready
         run: |
-          docker run -d \
-            --name task-manager-api \
-            --env-file .env \
-            --network host \
-            task-manager-api
+          echo "Waiting for services to be healthy..."
+          timeout 120 bash -c 'until docker-compose ps | grep -q "healthy"; do echo "Waiting..."; sleep 5; done'
+          echo "Services are ready!"
 
-      - name: Run TypeORM migrations inside container
-        run: docker exec -i task-manager-api npm run migration:run
-
-      - name: Restart app container
-        run: |
-          docker restart task-manager-api
+      - name: Check service status
+        run: docker-compose ps
