@@ -1,0 +1,11 @@
+name: Prod Deploy
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy-prod:
+    uses: ./.github/workflows/build-and-deploy.yml
+    with:
+      env-name: '[self-hosted, production]'
+      github-env: prod

@@ -1,0 +1,44 @@
+name: Build and Deploy
+
+on:
+  workflow_call:
+    inputs:
+      env-name:
+        type: string # self-hosted runner label
+      github-env:
+        type: string # dev or prod
+
+jobs:
+  deploy:
+    runs-on: ${{ inputs.env-name }}
+    environment: ${{ inputs.github-env }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up .env from environment variables
+        run: |
+          echo "APP_MESSAGE_PREFIX=${{ vars.APP_MESSAGE_PREFIX }}" >> .env
+          echo "DB_HOST=${{ vars.DB_HOST }}" >> .env
+          echo "DB_PORT=${{ vars.DB_PORT }}" >> .env
+          echo "DB_USER=${{ vars.DB_USER }}" >> .env
+          echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> .env
+          echo "DB_DATABASE=${{ vars.DB_DATABASE }}" >> .env
+          echo "DB_SYNC=${{ vars.DB_SYNC }}" >> .env
+          echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> .env
+          echo "JWT_EXPIRES_IN=${{ vars.JWT_EXPIRES_IN }}" >> .env
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build TypeScript app
+        run: npm run build
+
+      - name: Run TypeORM migrations
+        run: npm run migration:run
+
+      - name: Start Node app with PM2
+        run: |
+          pm2 stop app || true
+          pm2 start dist/main.js --name app
