@@ -11,7 +11,6 @@ on:
 jobs:
   deploy:
     runs-on: [self-hosted, '${{ inputs.env-name }}']
-    environment: ${{ inputs.github-env }}
 
     steps:
       - name: Checkout code
@@ -29,19 +28,19 @@ jobs:
           echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> .env
           echo "JWT_EXPIRES_IN=${{ vars.JWT_EXPIRES_IN }}" >> .env
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Build Docker images
+        run: docker compose build
 
-      - name: Build TypeScript app
-        run: npm run build
+      - name: Start Postgres and Node app
+        run: docker compose up -d
 
-      - name: Start Postgres with Docker Compose
-        run: docker compose up -d postgres
-
-      - name: Run TypeORM migrations
-        run: npm run migration:run
-
-      - name: Start Node app with PM2
+      - name: Wait for Postgres to be healthy
         run: |
-          pm2 stop app || true
-          pm2 start dist/main.js --name app
+          echo "Waiting for Postgres..."
+          until docker exec $(docker ps -qf "name=postgres") pg_isready -U postgres -d tasks; do
+            sleep 2
+          done
+          echo "Postgres is healthy!"
+
+      - name: Run migrations inside Node container
+        run: docker exec $(docker ps -qf "name=task-manager-api") npm run migration:run
