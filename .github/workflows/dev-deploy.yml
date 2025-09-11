@@ -11,3 +11,4 @@ jobs:
     with:
       env-name: dev
       github-env: dev
+    secrets: inherit
