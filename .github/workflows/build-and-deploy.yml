@@ -34,8 +34,8 @@ jobs:
       - name: Build and start services
         run: docker compose up -d
 
-      - name: Check DB envs
-        run: env | grep DB_
+      - name: Check DB envs in container
+        run: docker compose exec app env | grep DB_
 
       - name: Wait for services to be ready
         run: |
