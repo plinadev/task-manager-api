@@ -10,6 +10,6 @@ jobs:
       - run: echo "Hello from DEV runner on $(hostname)"
 
   test-prod:
-    runs-on: [self-hosted, prod]
+    runs-on: [self-hosted, production]
     steps:
       - run: echo "Hello from PROD runner on $(hostname)"
