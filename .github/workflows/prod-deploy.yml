@@ -7,5 +7,5 @@ jobs:
   deploy-prod:
     uses: ./.github/workflows/build-and-deploy.yml
     with:
-      env-name: '[self-hosted, production]'
+      env-name: self-hosted production
       github-env: prod

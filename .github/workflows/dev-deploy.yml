@@ -9,5 +9,5 @@ jobs:
   deploy-dev:
     uses: ./.github/workflows/build-and-deploy.yml
     with:
-      env-name: '[self-hosted, dev]'
+      env-name: self-hosted dev
       github-env: dev
