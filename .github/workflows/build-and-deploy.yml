@@ -10,7 +10,7 @@ on:
 
 jobs:
   deploy:
-    runs-on: ${{ inputs.env-name }}
+    runs-on: [self-hosted, '${{ inputs.env-name }}']
     environment: ${{ inputs.github-env }}
 
     steps:
