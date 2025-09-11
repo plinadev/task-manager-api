@@ -1,0 +1,15 @@
+name: Runner Test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-dev:
+    runs-on: [self-hosted, dev]
+    steps:
+      - run: echo "Hello from DEV runner on $(hostname)"
+
+  test-prod:
+    runs-on: [self-hosted, prod]
+    steps:
+      - run: echo "Hello from PROD runner on $(hostname)"
