@@ -18,7 +18,7 @@ services:
     restart: unless-stopped
 
   app:
-    build: .
+    image: task-manager-api-app   
     depends_on:
       postgres:
         condition: service_healthy
