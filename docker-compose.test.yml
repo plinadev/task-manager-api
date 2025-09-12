@@ -1,5 +1,5 @@
 services:
-  app:
+  test-app:
     build:
       context: .
       target: builder # <-- use the builder stage
