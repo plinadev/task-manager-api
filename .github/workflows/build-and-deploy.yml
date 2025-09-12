@@ -36,6 +36,7 @@ jobs:
         run: |
           cat > .env <<EOF
           APP_MESSAGE_PREFIX=${{ vars.APP_MESSAGE_PREFIX }}
+          APP_PORT=${{ vars.APP_PORT }}
           DB_HOST=${{ vars.DB_HOST }}
           DB_PORT=${{ vars.DB_PORT }}
           DB_USER=${{ vars.DB_USER }}
