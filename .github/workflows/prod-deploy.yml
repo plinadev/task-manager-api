@@ -8,5 +8,6 @@ jobs:
     uses: ./.github/workflows/build-and-deploy.yml
     with:
       env-name: production
+      db-env-name: db
       github-env: prod
     secrets: inherit

@@ -4,44 +4,111 @@ on:
   workflow_call:
     inputs:
       env-name:
-        type: string # self-hosted runner label
+        type: string # runner for app
+      db-env-name:
+        type: string # runner for DB
       github-env:
-        type: string # dev or prod
+        type: string
 
 jobs:
-  deploy:
+  # ---------------------------
+  # Run E2E Tests
+  # ---------------------------
+  test:
+    runs-on: [self-hosted, dev]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run E2E tests
+        run: |
+          docker compose -f docker-compose.test.yml up --abort-on-container-exit --build
+
+      - name: Stop test containers
+        if: always()
+        run: docker compose -f docker-compose.test.yml down
+
+  # ---------------------------
+  # Deploy Database
+  # ---------------------------
+  deploy-db:
+    needs: test
+    runs-on: [self-hosted, '${{ inputs.db-env-name }}']
+    environment: ${{ inputs.github-env }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Generate .env for DB
+        run: |
+          cat > .env <<EOF
+          DB_USER=${{ vars.DB_USER }}
+          DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+          DB_DATABASE=${{ vars.DB_DATABASE }}
+          DB_PORT=${{ vars.DB_PORT }}
+          EOF
+
+      - name: Stop existing DB container
+        run: docker compose -f docker-compose.db.yml down || true
+
+      - name: Docker cleanup
+        run: |
+          echo "Cleaning up old DB resources..."
+          docker container prune -f || true
+          docker image prune -f || true
+          docker network prune -f || true
+
+      - name: Build and start DB
+        run: docker compose -f docker-compose.db.yml up -d --build
+
+      - name: Wait for DB to be healthy
+        run: |
+          timeout 120 bash -c 'until docker compose -f docker-compose.db.yml ps | grep -q "healthy"; do echo "Waiting for DB..."; sleep 5; done'
+          echo "DB is ready!"
+
+  # ---------------------------
+  # Deploy Application
+  # ---------------------------
+  deploy-app:
+    needs: deploy-db
     runs-on: [self-hosted, '${{ inputs.env-name }}']
     environment: ${{ inputs.github-env }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up .env from environment variables
+      - name: Generate .env for App
         run: |
-          echo "APP_MESSAGE_PREFIX=${{ vars.APP_MESSAGE_PREFIX }}" >> .env
-          echo "DB_HOST=${{ vars.DB_HOST }}" >> .env
-          echo "DB_PORT=${{ vars.DB_PORT }}" >> .env
-          echo "DB_USER=${{ vars.DB_USER }}" >> .env
-          echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> .env
-          echo "DB_DATABASE=${{ vars.DB_DATABASE }}" >> .env
-          echo "DB_SYNC=${{ vars.DB_SYNC }}" >> .env
-          echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> .env
-          echo "JWT_EXPIRES_IN=${{ vars.JWT_EXPIRES_IN }}" >> .env
+          cat > .env <<EOF
+          APP_MESSAGE_PREFIX=${{ vars.APP_MESSAGE_PREFIX }}
+          APP_PORT=${{ vars.APP_PORT }}
+          DB_HOST=${{ vars.DB_HOST }} # must point to deployed DB host
+          DB_PORT=${{ vars.DB_PORT }}
+          DB_USER=${{ vars.DB_USER }}
+          DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+          DB_DATABASE=${{ vars.DB_DATABASE }}
+          DB_SYNC=${{ vars.DB_SYNC }}
+          JWT_SECRET=${{ secrets.JWT_SECRET }}
+          JWT_EXPIRES_IN=${{ vars.JWT_EXPIRES_IN }}
+          EOF
 
-      - name: Stop existing containers
-        run: docker compose down || true
+      - name: Stop existing App container
+        run: docker compose -f docker-compose.app.yml down || true
 
-      - name: Build and start services
-        run: docker compose --env-file .env up -d --build
-
-      - name: Check DB envs in container
-        run: docker compose exec app env | grep DB_
-
-      - name: Wait for services to be ready
+      - name: Docker cleanup
         run: |
-          echo "Waiting for services to be healthy..."
-          timeout 120 bash -c 'until docker compose ps | grep -q "healthy"; do echo "Waiting..."; sleep 5; done'
-          echo "Services are ready!"
+          echo "Cleaning up old App resources..."
+          docker container prune -f || true
+          docker image prune -f || true
+          docker network prune -f || true
 
-      - name: Check service status
-        run: docker compose ps
+      - name: Build and start App
+        run: docker compose -f docker-compose.app.yml up -d --build
+
+      - name: Wait for App to be healthy
+        run: |
+          timeout 120 bash -c 'until docker compose -f docker-compose.app.yml ps | grep -q "healthy"; do echo "Waiting for App..."; sleep 5; done'
+          echo "App is ready!"
+
+      - name: Show App service status
+        run: docker compose -f docker-compose.app.yml ps
