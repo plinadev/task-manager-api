@@ -24,6 +24,7 @@ jobs:
         run: docker compose -f docker-compose.test.yml down
 
   deploy:
+    needs: test
     runs-on: [self-hosted, '${{ inputs.env-name }}']
     environment: ${{ inputs.github-env }}
 
@@ -47,6 +48,13 @@ jobs:
 
       - name: Stop existing containers
         run: docker compose down || true
+
+      - name: Docker cleanup
+        run: |
+          echo "Cleanup..."
+          docker container prune -f || true
+          docker image prune -f || true
+          docker network prune -f || true
 
       - name: Build and start services
         run: docker compose up -d --build
