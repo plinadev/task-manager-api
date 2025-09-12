@@ -10,5 +10,6 @@ jobs:
     uses: ./.github/workflows/build-and-deploy.yml
     with:
       env-name: dev
+      db-env-name: dev
       github-env: dev
     secrets: inherit

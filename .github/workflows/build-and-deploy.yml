@@ -4,11 +4,16 @@ on:
   workflow_call:
     inputs:
       env-name:
-        type: string
+        type: string # runner for app
+      db-env-name:
+        type: string # runner for DB
       github-env:
         type: string
 
 jobs:
+  # ---------------------------
+  # Run E2E Tests
+  # ---------------------------
   test:
     runs-on: [self-hosted, dev]
     steps:
@@ -23,21 +28,61 @@ jobs:
         if: always()
         run: docker compose -f docker-compose.test.yml down
 
-  deploy:
+  # ---------------------------
+  # Deploy Database
+  # ---------------------------
+  deploy-db:
     needs: test
-    runs-on: [self-hosted, '${{ inputs.env-name }}']
+    runs-on: [self-hosted, '${{ inputs.db-env-name }}']
     environment: ${{ inputs.github-env }}
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Generate .env file
+      - name: Generate .env for DB
+        run: |
+          cat > .env <<EOF
+          DB_USER=${{ vars.DB_USER }}
+          DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+          DB_DATABASE=${{ vars.DB_DATABASE }}
+          DB_PORT=${{ vars.DB_PORT }}
+          EOF
+
+      - name: Stop existing DB container
+        run: docker compose -f docker-compose.db.yml down || true
+
+      - name: Docker cleanup
+        run: |
+          echo "Cleaning up old DB resources..."
+          docker container prune -f || true
+          docker image prune -f || true
+          docker network prune -f || true
+
+      - name: Build and start DB
+        run: docker compose -f docker-compose.db.yml up -d --build
+
+      - name: Wait for DB to be healthy
+        run: |
+          timeout 120 bash -c 'until docker compose -f docker-compose.db.yml ps | grep -q "healthy"; do echo "Waiting for DB..."; sleep 5; done'
+          echo "DB is ready!"
+
+  # ---------------------------
+  # Deploy Application
+  # ---------------------------
+  deploy-app:
+    needs: deploy-db
+    runs-on: [self-hosted, '${{ inputs.env-name }}']
+    environment: ${{ inputs.github-env }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Generate .env for App
         run: |
           cat > .env <<EOF
           APP_MESSAGE_PREFIX=${{ vars.APP_MESSAGE_PREFIX }}
           APP_PORT=${{ vars.APP_PORT }}
-          DB_HOST=${{ vars.DB_HOST }}
+          DB_HOST=${{ vars.DB_HOST }} # must point to deployed DB host
           DB_PORT=${{ vars.DB_PORT }}
           DB_USER=${{ vars.DB_USER }}
           DB_PASSWORD=${{ secrets.DB_PASSWORD }}
@@ -47,24 +92,23 @@ jobs:
           JWT_EXPIRES_IN=${{ vars.JWT_EXPIRES_IN }}
           EOF
 
-      - name: Stop existing containers
-        run: docker compose down || true
+      - name: Stop existing App container
+        run: docker compose -f docker-compose.app.yml down || true
 
       - name: Docker cleanup
         run: |
-          echo "Cleanup..."
+          echo "Cleaning up old App resources..."
           docker container prune -f || true
           docker image prune -f || true
           docker network prune -f || true
 
-      - name: Build and start services
-        run: docker compose up -d --build
+      - name: Build and start App
+        run: docker compose -f docker-compose.app.yml up -d --build
 
-      - name: Wait for services to be healthy
+      - name: Wait for App to be healthy
         run: |
-          echo "Waiting for services to be healthy..."
-          timeout 120 bash -c 'until docker compose ps | grep -q "healthy"; do echo "Waiting..."; sleep 5; done'
-          echo "Services are ready!"
+          timeout 120 bash -c 'until docker compose -f docker-compose.app.yml ps | grep -q "healthy"; do echo "Waiting for App..."; sleep 5; done'
+          echo "App is ready!"
 
-      - name: Show service status
-        run: docker compose ps
+      - name: Show App service status
+        run: docker compose -f docker-compose.app.yml ps
