@@ -4,9 +4,9 @@ on:
   workflow_call:
     inputs:
       env-name:
-        type: string # self-hosted runner label
+        type: string
       github-env:
-        type: string # dev or prod
+        type: string
 
 jobs:
   deploy:
@@ -30,6 +30,21 @@ jobs:
           JWT_SECRET=${{ secrets.JWT_SECRET }}
           JWT_EXPIRES_IN=${{ vars.JWT_EXPIRES_IN }}
           EOF
+
+      - name: Wait for tests to pass
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: workflowRuns } = await github.rest.actions.listWorkflowRuns({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'test.yml',
+              branch: context.ref.replace('refs/heads/', ''),
+            });
+            const latestRun = workflowRuns.workflow_runs[0];
+            if (latestRun.conclusion !== 'success') {
+              throw new Error('E2E tests failed. Deployment blocked.');
+            }
 
       - name: Stop existing containers
         run: docker compose down || true
