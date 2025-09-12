@@ -1,0 +1,33 @@
+services:
+  app:
+    build:
+      context: .
+      target: builder # <-- use the builder stage
+    environment:
+      DB_HOST: test-postgres
+      DB_PORT: 5432
+      DB_USER: test
+      DB_PASSWORD: test
+      DB_SYNC: true
+      DB_DATABASE: test_db
+      JWT_SECRET: testsecret
+      NODE_ENV: test
+      JWT_EXPIRES_IN: 1m
+
+    depends_on:
+      - test-postgres
+    command: npm run test:e2e
+    networks:
+      - test-network
+  test-postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: test
+      POSTGRES_PASSWORD: test
+      POSTGRES_DB: test_db
+    networks:
+      - test-network
+
+networks:
+  test-network:
+    driver: bridge
