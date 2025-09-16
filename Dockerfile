@@ -23,4 +23,4 @@ COPY --from=builder /app/package*.json ./
 
 EXPOSE 3000
 
-CMD ["sh", "-c", "npm run typeorm migration:run -- -d dist/typeorm.config.js && node dist/src/main.js"]
+CMD ["node", "dist/src/main.js"]
