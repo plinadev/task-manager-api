@@ -17,6 +17,11 @@ jobs:
   test:
     runs-on: [self-hosted, dev]
     steps:
+      - name: Clean workspace
+        run: |
+          echo "Cleaning workspace..."
+          sudo rm -rf $GITHUB_WORKSPACE/*
+
       - name: Checkout code
         uses: actions/checkout@v4
 
@@ -36,6 +41,11 @@ jobs:
     runs-on: [self-hosted, '${{ inputs.db-env-name }}']
     environment: ${{ inputs.github-env }}
     steps:
+      - name: Clean workspace
+        run: |
+          echo "Cleaning workspace..."
+          sudo rm -rf $GITHUB_WORKSPACE/*
+
       - name: Checkout code
         uses: actions/checkout@v4
 
@@ -74,6 +84,11 @@ jobs:
     runs-on: [self-hosted, '${{ inputs.env-name }}']
     environment: ${{ inputs.github-env }}
     steps:
+      - name: Clean workspace
+        run: |
+          echo "Cleaning workspace..."
+          sudo rm -rf $GITHUB_WORKSPACE/*
+
       - name: Checkout code
         uses: actions/checkout@v4
 
@@ -104,6 +119,11 @@ jobs:
     runs-on: [self-hosted, '${{ inputs.env-name }}']
     environment: ${{ inputs.github-env }}
     steps:
+      - name: Clean workspace
+        run: |
+          echo "Cleaning workspace..."
+          sudo rm -rf $GITHUB_WORKSPACE/*
+
       - name: Checkout code
         uses: actions/checkout@v4
 
