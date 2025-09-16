@@ -67,10 +67,40 @@ jobs:
           echo "DB is ready!"
 
   # ---------------------------
+  # Run Migrations
+  # ---------------------------
+  migrate-db:
+    needs: deploy-db
+    runs-on: [self-hosted, '${{ inputs.env-name }}']
+    environment: ${{ inputs.github-env }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Generate .env for migrations
+        run: |
+          cat > .env <<EOF
+          DB_HOST=${{ vars.DB_HOST }}
+          DB_PORT=${{ vars.DB_PORT }}
+          DB_USER=${{ vars.DB_USER }}
+          DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+          DB_DATABASE=${{ vars.DB_DATABASE }}
+          EOF
+
+      - name: Run migrations
+        run: |
+          echo "Running TypeORM migrations..."
+          docker run --rm \
+            --env-file .env \
+            -v $(pwd):/app \
+            -w /app node:22-alpine \
+            sh -c "npm ci && npm run build && npx typeorm migration:run -d dist/typeorm.config.js"
+
+  # ---------------------------
   # Deploy Application
   # ---------------------------
   deploy-app:
-    needs: deploy-db
+    needs: migrate-db
     runs-on: [self-hosted, '${{ inputs.env-name }}']
     environment: ${{ inputs.github-env }}
     steps:
