@@ -106,6 +106,7 @@ jobs:
         run: |
           echo "Running TypeORM migrations..."
           docker run --rm \
+            --network task-manager-api_default \ 
             --env-file .env \
             -v $(pwd):/app \
             -w /app node:22-alpine \
